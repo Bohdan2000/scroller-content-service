@@ -7,8 +7,10 @@ import {
   ProcessingStatus,
   VisibilityType,
 } from '@prisma/client';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { MuxService } from '../mux/mux.service';
+import { SCROLLER_EXCHANGE, RoutingKeys } from '../events/events.constants';
 import {
   VideoNotFoundException,
   VideoForbiddenException,
@@ -45,6 +47,7 @@ export class VideosService {
     private readonly prisma: PrismaService,
     private readonly mux: MuxService,
     private readonly config: ConfigService,
+    private readonly amqp: AmqpConnection,
   ) {}
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -268,12 +271,13 @@ export class VideosService {
       include: { asset: true, topics: true, visibility: true },
     });
 
-    this.emitEvent('video.published', {
+    await this.emitEvent(RoutingKeys.VIDEO_PUBLISHED, {
       videoId,
       authorUserId: userId,
       title: updated.title,
       topicIds: updated.topics.map((t) => t.topicId),
       visibility: updated.visibility?.visibilityType ?? VisibilityType.PUBLIC,
+      publishedAt: new Date().toISOString(),
     });
 
     return this.toResponseDto(updated);
@@ -299,7 +303,7 @@ export class VideosService {
       include: { asset: true, topics: true, visibility: true },
     });
 
-    this.emitEvent('video.unpublished', { videoId, authorUserId: userId });
+    await this.emitEvent(RoutingKeys.VIDEO_UNPUBLISHED, { videoId, authorUserId: userId });
 
     return this.toResponseDto(updated);
   }
@@ -314,7 +318,7 @@ export class VideosService {
 
     await this.prisma.video.delete({ where: { id: videoId } });
 
-    this.emitEvent('video.deleted', { videoId, authorUserId: userId });
+    await this.emitEvent(RoutingKeys.VIDEO_DELETED, { videoId, authorUserId: userId });
 
     this.logger.debug(`Video ${videoId} deleted by user ${userId}`);
   }
@@ -548,18 +552,19 @@ export class VideosService {
   }
 
   /**
-   * Emit a domain event.
-   *
-   * TODO: publish to RabbitMQ exchange instead of logging.
-   *       Use an event bus (e.g. amqplib or @golevelup/nestjs-rabbitmq) and
-   *       publish to the `content` exchange with the event name as routing key.
+   * Publish a domain event to the scroller topic exchange.
+   * The routing key is the event name (e.g. "video.published").
    */
-  private emitEvent(event: string, payload: Record<string, unknown>): void {
-    this.logger.debug(
-      `[EVENT] ${event}: ${JSON.stringify(payload)}`,
-    );
-    // TODO: publish to RabbitMQ exchange
-    // await this.amqpConnection.publish('content', event, payload);
+  private async emitEvent(routingKey: string, payload: Record<string, unknown>): Promise<void> {
+    try {
+      await this.amqp.publish(SCROLLER_EXCHANGE, routingKey, payload);
+      this.logger.debug(`[EVENT] ${routingKey}: ${JSON.stringify(payload)}`);
+    } catch (err) {
+      // Log and swallow — event emission must not fail the primary operation
+      this.logger.error(
+        `Failed to publish event ${routingKey}: ${(err as Error).message}`,
+      );
+    }
   }
 
   /**

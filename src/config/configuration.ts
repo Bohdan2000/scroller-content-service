@@ -9,4 +9,7 @@ export default () => ({
     webhookSecret: process.env.MUX_WEBHOOK_SECRET ?? '',
   },
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+  rabbitmq: {
+    url: process.env.RABBITMQ_URL ?? 'amqp://guest:guest@localhost:5672',
+  },
 });

@@ -7,6 +7,7 @@ import { MuxModule } from './mux/mux.module';
 import { HealthModule } from './health/health.module';
 import { VideosModule } from './videos/videos.module';
 import { WebhookModule } from './webhook/webhook.module';
+import { EventsModule } from './events/events.module';
 import { JwtAccessStrategy } from './common/strategies/jwt-access.strategy';
 
 @Module({
@@ -19,6 +20,7 @@ import { JwtAccessStrategy } from './common/strategies/jwt-access.strategy';
     PassportModule.register({ defaultStrategy: 'jwt-access' }),
     PrismaModule,
     MuxModule,
+    EventsModule,
     HealthModule,
     VideosModule,
     WebhookModule,

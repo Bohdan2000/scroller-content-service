@@ -19,6 +19,23 @@ services:
       timeout: 5s
       retries: 10
 
+  # ─── RabbitMQ ────────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: content_rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # ─── Content Service ─────────────────────────────────────────────────────────
   content:
     build:
@@ -30,6 +47,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: ${PORT:-3003}
@@ -39,6 +58,7 @@ services:
       MUX_TOKEN_SECRET: ${MUX_TOKEN_SECRET}
       MUX_WEBHOOK_SECRET: ${MUX_WEBHOOK_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
     ports:
       - "${PORT:-3003}:3003"
     healthcheck:
