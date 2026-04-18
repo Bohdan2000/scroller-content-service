@@ -1,0 +1,98 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VideoStatus {
+  DRAFT
+  UPLOADING
+  PROCESSING
+  READY
+  PUBLISHED
+  FAILED
+}
+
+enum UploadStatus {
+  PENDING
+  ASSET_CREATED
+  FAILED
+}
+
+enum ProcessingStatus {
+  WAITING
+  PREPARING
+  READY
+  ERRORED
+}
+
+enum VisibilityType {
+  PUBLIC
+  GROUP_ONLY
+  PRIVATE
+}
+
+model Video {
+  id           String      @id @default(uuid())
+  authorUserId String      @map("author_user_id")
+  title        String
+  description  String?
+  status       VideoStatus @default(DRAFT)
+  durationSec  Int?        @map("duration_sec")
+  thumbnailUrl String?     @map("thumbnail_url")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  asset      VideoAsset?
+  topics     VideoTopic[]
+  visibility VideoVisibilityRule?
+
+  @@index([authorUserId])
+  @@index([status])
+  @@map("videos")
+}
+
+model VideoAsset {
+  id               String           @id @default(uuid())
+  videoId          String           @unique @map("video_id")
+  muxAssetId       String?          @unique @map("mux_asset_id")
+  muxUploadId      String?          @unique @map("mux_upload_id")
+  playbackId       String?          @map("playback_id")
+  uploadStatus     UploadStatus     @default(PENDING) @map("upload_status")
+  processingStatus ProcessingStatus @default(WAITING) @map("processing_status")
+  errorMessage     String?          @map("error_message")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@map("video_assets")
+}
+
+model VideoTopic {
+  id      String @id @default(uuid())
+  videoId String @map("video_id")
+  topicId String @map("topic_id")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, topicId])
+  @@index([videoId])
+  @@index([topicId])
+  @@map("video_topics")
+}
+
+model VideoVisibilityRule {
+  id             String         @id @default(uuid())
+  videoId        String         @unique @map("video_id")
+  visibilityType VisibilityType @default(PUBLIC) @map("visibility_type")
+  groupId        String?        @map("group_id")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@map("video_visibility_rules")
+}
