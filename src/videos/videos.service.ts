@@ -316,9 +316,20 @@ export class VideosService {
     const video = await this.fetchVideoWithRelations(videoId);
     this.assertOwnership(video, userId);
 
+    const muxAssetId = video.asset?.muxAssetId ?? null;
+
     await this.prisma.video.delete({ where: { id: videoId } });
 
     await this.emitEvent(RoutingKeys.VIDEO_DELETED, { videoId, authorUserId: userId });
+
+    // Best-effort Mux asset cleanup — log on failure, never block the response
+    if (muxAssetId) {
+      this.mux.deleteAsset(muxAssetId).catch((err: Error) => {
+        this.logger.error(
+          `Failed to delete Mux asset ${muxAssetId} for video ${videoId}: ${err.message}`,
+        );
+      });
+    }
 
     this.logger.debug(`Video ${videoId} deleted by user ${userId}`);
   }

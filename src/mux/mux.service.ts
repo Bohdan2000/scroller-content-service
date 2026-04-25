@@ -67,4 +67,12 @@ export class MuxService {
   async getAsset(muxAssetId: string): Promise<Mux.Video.Asset> {
     return this.mux.video.assets.retrieve(muxAssetId);
   }
+
+  /**
+   * Delete a Mux asset by its asset ID.
+   */
+  async deleteAsset(muxAssetId: string): Promise<void> {
+    await this.mux.video.assets.delete(muxAssetId);
+    this.logger.debug(`Mux asset deleted: ${muxAssetId}`);
+  }
 }
