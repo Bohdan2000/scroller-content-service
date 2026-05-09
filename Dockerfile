@@ -10,7 +10,7 @@ COPY package*.json ./
 COPY prisma/schema.prisma ./prisma/
 
 # Install all deps (including devDeps needed for prisma generate)
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Use the locally installed prisma binary — never npx (which may pull a newer version)
 RUN ./node_modules/.bin/prisma generate
@@ -42,7 +42,7 @@ RUN apk add --no-cache openssl
 COPY package*.json ./
 COPY prisma ./prisma
 
-RUN npm ci --omit=dev && ./node_modules/.bin/prisma generate
+RUN npm ci --omit=dev --legacy-peer-deps && ./node_modules/.bin/prisma generate
 
 # Copy compiled output
 COPY --from=build /app/dist ./dist
