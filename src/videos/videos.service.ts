@@ -428,6 +428,10 @@ export class VideosService {
       return;
     }
 
+    const thumbnailUrl = playbackId
+      ? `https://image.mux.com/${playbackId}/thumbnail.png`
+      : null;
+
     // Only transition if still in PROCESSING
     if (video.status === VideoStatus.PROCESSING) {
       this.assertTransition(video.status, VideoStatus.READY);
@@ -436,6 +440,7 @@ export class VideosService {
         data: {
           status: VideoStatus.READY,
           ...(durationSec !== null && { durationSec }),
+          ...(thumbnailUrl !== null && { thumbnailUrl }),
         },
       });
     }
@@ -444,7 +449,7 @@ export class VideosService {
       videoId:      asset.videoId,
       ownerId:      video.authorUserId,
       title:        video.title,
-      thumbnailUrl: video.thumbnailUrl ?? undefined,
+      thumbnailUrl: thumbnailUrl ?? undefined,
     });
 
     this.logger.debug(
