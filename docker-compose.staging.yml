@@ -14,8 +14,6 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3003
-      DATABASE_URL: postgresql://content:content_secret@postgres:5432/content_service
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     ports:
       - "3003:3003"
     networks:
