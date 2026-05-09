@@ -440,6 +440,13 @@ export class VideosService {
       });
     }
 
+    await this.emitEvent(RoutingKeys.VIDEO_ASSET_READY, {
+      videoId:      asset.videoId,
+      ownerId:      video.authorUserId,
+      title:        video.title,
+      thumbnailUrl: video.thumbnailUrl ?? undefined,
+    });
+
     this.logger.debug(
       `Asset ready: muxAssetId=${muxAssetId}, videoId=${asset.videoId}, playbackId=${playbackId}`,
     );
